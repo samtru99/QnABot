@@ -12,11 +12,10 @@ yt = YouTube('https://www.youtube.com/watch?v=MVYrJJNdrEg')
 
 audio = yt.streams.filter(only_audio=True)
 for file in audio:
-   #xwprint(f"file is {file} \n")
     if file.mime_type == "audio/mp4":
         stream = yt.streams.get_by_itag(file.itag)
         print(f"file - {file}")
-        stream.download()
+        stream.download(filename='podcast.mp4')
 
 
 '''
@@ -37,9 +36,9 @@ MP4ToMP3(VIDEO_FILE_PATH, AUDIO_FILE_PATH)
             for whisper to process 
 '''
 from pydub import AudioSegment
-song = AudioSegment.from_mp3("../audio_files/new_podcast.mp3")
+song = AudioSegment.from_mp3("new_podcast.mp3")
 one_minute = 1 * 60 * 1000
-
+out_path = './audio_clips/'
 start = 0
 end = one_minute
 minute = 1
@@ -47,7 +46,7 @@ while end < len(song):
 
     end = min(end, len(song))
     new_chunk = song[start:end]
-    new_chunk.export(f"{minute}_minute.mp3", format="mp3")
+    new_chunk.export(out_path+f"{minute}_minute.mp3", format="mp3")
     minute += 1
     start = end
     end += one_minute
@@ -75,8 +74,8 @@ modelE = SentenceTransformer('all-mpnet-base-v2')
 model = whisper.load_model('large').to(device)
 
 for i in range(3): #total number of audio files 
-    a_f = "./video_slices/" + f"{i+1}" + "_minute.mp3"
-    unique_id = f"processing {i+1}_minute.mp3"
+    a_f = "./audio_clips/" + f"{i+1}" + "_minute.mp3"
+    unique_id = f"{i+1}_minute.mp3"
     results = model.transcribe(a_f)
     embedd = modelE.encode(results['text']).tolist()
     client.upsert(
@@ -87,4 +86,14 @@ for i in range(3): #total number of audio files
                 }
             ]
         )
+
+'''
+    Step 5. Ask question and find closest match
+'''
+
+question = "Who is getting interviewed in the metaverse?"
+q_vector = modelE.encode(question).tolist()
+res = client.query(top_k = 1, vector=q_vector, include_metadata=True)
+match = res['matches']
+print(f"res is 'n {match[0]['metadata']['text']}")
 
